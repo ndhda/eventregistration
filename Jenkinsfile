@@ -20,14 +20,14 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t eventregistration .'
+                sh 'docker build -t eventregistration-app .'
         }
             }
 
 
         stage('Run Docker Container') {
             steps {
-                sh 'docker run -d -p 8080:8080 eventnad'
+                sh 'docker run -d -p 8080:8080 -app'
             }
         }
     }
