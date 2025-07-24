@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+          background-color: #f8f9fa;
+        }
+        h2, h3 {
+          color: #343a40;
+        }
+        .card-title {
+          font-size: 1.2rem;
+          font-weight: 600;
+        }
+        .table-hover tbody tr:hover {
+          background-color: #f1f1f1;
+        }
+        .btn-info {
+          background-color: #0dcaf0;
+          color: #000;
+        }
+    </style>
+</head>
+<body class="container py-5">
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>🎯 Admin Dashboard</h2>
+    <button class="btn btn-outline-danger" onclick="logout()">Logout</button>
+</div>
+
+<div class="card shadow-sm mb-5">
+    <div class="card-header bg-dark text-white">
+        <strong>Registered Users</strong>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-bordered table-hover mb-0">
+            <thead class="table-light">
+            <tr>
+                <th>#</th>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Event Name</th>
+                <th>Event Type</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody id="userTableBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<div class="mb-3 d-flex justify-content-between align-items-center">
+    <h3>🗂️ Event Types & Questions</h3>
+    <a href="/admin/form" class="btn btn-success">+ Create New Event</a>
+</div>
+
+<div id="eventTypesContainer" class="row gy-3"></div>
+
+<!-- Answer Modal -->
+<div class="modal fade" id="answersModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">📝 Answers</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="answersBody"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Question Modal -->
+<div class="modal fade" id="addQuestionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="addQuestionForm">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">➕ Add Question</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="eventId">
+
+                    <label class="form-label">Label:</label>
+                    <input class="form-control mb-3" id="qLabel" required>
+
+                    <label class="form-label">Type:</label>
+                    <select class="form-select mb-3" id="qType">
+                        <option value="text">Text</option>
+                        <option value="select">Select</option>
+                        <option value="date">Date</option>
+                        <option value="number">Number</option>
+                    </select>
+
+                    <label class="form-label">Options (for select only):</label>
+                    <input class="form-control" id="qOptions" placeholder="e.g. Option1, Option2">
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-success">Add Question</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    async function loadRegistrations() {
+      const res = await fetch("/registrations");
+      const data = await res.json();
+      const tbody = document.getElementById("userTableBody");
+      tbody.innerHTML = "";
+
+      data.forEach((reg, index) => {
+        const row = `
+          <tr>
+            <td>${index + 1}</td>
+            <td>${reg.username}</td>
+            <td>${reg.email}</td>
+            <td>${reg.eventName}</td>
+            <td>${reg.eventType}</td>
+            <td>
+              <button class="btn btn-sm btn-info" onclick='showAnswers(${JSON.stringify(reg.answers)})'>View Answers</button>
+            </td>
+          </tr>
+        `;
+        tbody.innerHTML += row;
+      });
+    }
+
+    function showAnswers(answers) {
+      const container = document.getElementById("answersBody");
+      container.innerHTML = "";
+
+      answers.forEach(ans => {
+        const p = document.createElement("p");
+        p.innerHTML = `<strong>${ans.question}</strong>: ${ans.answer}`;
+        container.appendChild(p);
+      });
+
+      new bootstrap.Modal(document.getElementById("answersModal")).show();
+    }
+
+    async function loadEventTypes() {
+      const res = await fetch("/events");
+      const events = await res.json();
+      const container = document.getElementById("eventTypesContainer");
+      container.innerHTML = "";
+
+      events.forEach(event => {
+        const questionsHtml = event.questions.map(q => `
+          <li><strong>${q.label}</strong> (${q.type}${q.type === "select" ? `: ${q.options.join(", ")}` : ""})</li>
+        `).join("");
+
+        const card = `
+          <div class="col-md-6">
+            <div class="card shadow-sm">
+              <div class="card-body">
+                <h5 class="card-title">📋 ${event.type}</h5>
+                <ul>${questionsHtml}</ul>
+                <button class="btn btn-sm btn-outline-primary" onclick='showAddQuestionModal("${event.id}")'>+ Add Question</button>
+              </div>
+            </div>
+          </div>
+        `;
+        container.innerHTML += card;
+      });
+    }
+
+    function showAddQuestionModal(eventId) {
+      document.getElementById("eventId").value = eventId;
+      document.getElementById("addQuestionForm").reset();
+      new bootstrap.Modal(document.getElementById("addQuestionModal")).show();
+    }
+
+    document.getElementById("addQuestionForm").addEventListener("submit", async function (e) {
+      e.preventDefault();
+      const id = document.getElementById("eventId").value;
+      const label = document.getElementById("qLabel").value;
+      const type = document.getElementById("qType").value;
+      const options = document.getElementById("qOptions").value;
+
+      const newQuestion = { label, type };
+      if (type === "select" && options.trim() !== "") {
+        newQuestion.options = options.split(",").map(opt => opt.trim());
+      }
+
+      await fetch(`/events/${id}/questions`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newQuestion)
+      });
+
+      bootstrap.Modal.getInstance(document.getElementById("addQuestionModal")).hide();
+      loadEventTypes(); // refresh
+    });
+
+    loadRegistrations();
+    loadEventTypes();
+
+    function logout() {
+      sessionStorage.clear();
+      window.location.href = "/login";
+    }
+</script>
+
+</body>
+</html>
