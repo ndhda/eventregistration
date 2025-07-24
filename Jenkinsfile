@@ -1,14 +1,17 @@
 pipeline {
     agent {
-        docker {
+	docker {
             image 'docker:24.0.2-dind'
             args '-u root --privileged -v /var/run/docker.sock:/var/run/docker.sock'
         }
+	}
+    environment {
+        IMAGE_NAME = "eventregistration-app"
+        CONTAINER_NAME = "eventnad-app"
     }
 
-
     stages {
-        stage('Install Java & Maven, then Build JAR') {
+        stage('Build JAR') {
             steps {
                 sh '''
                 apk add --no-cache openjdk17 maven
@@ -17,18 +20,21 @@ pipeline {
             }
         }
 
-
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t eventregistration-app .'
-        }
+                sh "docker build -t $IMAGE_NAME ."
             }
+        }
 
-
-
-        stage('Run Docker Container') {
+        stage('Stop Old Container') {
             steps {
-                sh 'docker run -d -p 8080:8080 eventregistration-app'
+                sh "docker rm -f $CONTAINER_NAME || true"
+            }
+        }
+
+        stage('Run New Container') {
+            steps {
+                sh "docker run -d -p 8080:8900 --name $CONTAINER_NAME $IMAGE_NAME"
             }
         }
     }
