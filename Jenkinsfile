@@ -26,7 +26,7 @@ pipeline {
             }
         }
 
-        stage('Stop Old Container') {
+        stage('Remove Old Container') {
             steps {
                 sh "docker rm -f $CONTAINER_NAME || true"
             }
