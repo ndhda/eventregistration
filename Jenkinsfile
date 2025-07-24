@@ -27,7 +27,7 @@ pipeline {
 
         stage('Run Docker Container') {
             steps {
-                sh 'docker run -d -p 8080:8080 eventnad-app'
+                sh 'docker run -d -p 8080:8080 --name eventnad-app eventregistration-app'
             }
         }
     }
